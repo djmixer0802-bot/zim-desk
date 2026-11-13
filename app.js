@@ -61,14 +61,14 @@
   // ---- error row ----
   function renderErr() {
     const e = $('#err');
-    if (!DP) { e.classList.remove('hidden'); e.textContent = 'Open the desk link from your Telegram once (it ends in #d=…)'; return; }
+    if (!DP) { e.classList.remove('hidden'); document.body.classList.add('has-err'); e.textContent = 'Open the desk link from your Telegram once (it ends in #d=…)'; return; }
     const stale = S.state && (Date.now() / 1000 - S.state.updated > 60);
     if (S.failing || stale) {
       const n = Math.max(0, Math.ceil((S.nextTry - Date.now()) / 1000));
       const last = S.state ? hm(S.state.updated) : '–';
       e.textContent = `Desk offline · retrying in ${n}s · last update ${last}`;
-      e.classList.remove('hidden');
-    } else e.classList.add('hidden');
+      e.classList.remove('hidden'); document.body.classList.add('has-err');
+    } else { e.classList.add('hidden'); document.body.classList.remove('has-err'); }
   }
   setInterval(renderErr, 1000);
 
@@ -199,11 +199,11 @@
     }
     if (a === 'auditor') {
       const L = d.layers || [];
-      const strips = Array.from({ length: 8 }, (_, i) => { const l = L[i]; const cls = !l ? (d.running && i === L.length ? 'run' : '') : l.pass === true ? 'ok' : l.pass === false ? 'no' : ''; return `<div class="strip ${cls}"></div>`; }).join('');
-      const line = !d.mint ? 'No coin taken apart yet' : d.running ? 'taking apart...' : d.passed ? '8/8 → Executor' : esc(d.result);
+      const strips = Array.from({ length: 8 }, (_, i) => { const l = L[i]; const cls = !l ? (d.auditing && i === L.length ? 'run' : '') : l.pass === true ? 'ok' : l.pass === false ? 'no' : ''; return `<div class="strip ${cls}"></div>`; }).join('');
+      const line = !d.mint ? 'No coin taken apart yet' : d.auditing ? 'taking apart...' : d.passed ? '8/8 → Executor' : esc(d.result);
       return `<div class="acard" style="${size}" ${d.mint ? `data-open-audit="${esc(d.mint)}"` : ''}><div class="hd"><span style="color:var(--green)">●</span> Auditor ${status}<span class="who">${esc(d.name || '')}</span></div>
         <div class="bigc num">${d.count} taken apart</div><div class="lbl">${d.rejected} rejected</div>
-        <div class="body"><div class="strips">${strips}</div><div style="font-size:15px;font-weight:600;color:${d.passed ? 'var(--green)' : d.mint && !d.running ? 'var(--red)' : 'var(--sec)'}">${line}</div></div></div>`;
+        <div class="body"><div class="strips">${strips}</div><div style="font-size:15px;font-weight:600;color:${d.passed ? 'var(--green)' : d.mint && !d.auditing ? 'var(--red)' : 'var(--sec)'}">${line}</div></div></div>`;
     }
     if (a === 'analyst') {
       return `<div class="acard" style="${size}"><div class="hd"><span style="color:var(--yellow)">●</span> Analyst${d.mode === 'rules' ? ' (rules)' : ''} ${status}<span class="who">${esc(d.name || '')}</span></div>
@@ -260,9 +260,10 @@
     const ic = { bought: '↓', sold: '↑', stopped: '!', rejected: '×' }[r.kind] || '•';
     const vcls = r.kind === 'sold' ? (String(r.value).startsWith('-') ? 'down' : 'up') : r.kind === 'stopped' ? 'down' : r.kind === 'rejected' ? 'secc' : '';
     const target = r.kind === 'rejected' ? 'audit' : 'coin';
+    const parts = String(r.value || '').split(' · '); const main = parts[0], sub = parts.slice(1).join(' · ');
     return `<button class="row" data-row="${target}" data-mint="${esc(r.mint)}"><span class="ic ${r.kind}">${ic}</span>
       <span class="mid"><div class="t">${esc(r.title)}</div><div class="s">${esc(r.subtitle)}</div></span>
-      <span class="v ${vcls}">${esc(r.value)}${r.value2 ? `<small>${esc(r.value2)}</small>` : ''}</span></button>`;
+      <span class="v ${vcls}">${esc(main)}${sub ? `<small class="secc">${esc(sub)}</small>` : ''}${r.value2 ? `<small>${esc(r.value2)}</small>` : ''}</span></button>`;
   }
   function bindRows(el) { el.querySelectorAll('[data-row]').forEach(b => b.onclick = () => openOverlay({ kind: b.dataset.row, mint: b.dataset.mint })); }
   function renderActivity() {
@@ -348,7 +349,7 @@
     const p = d.position;
     ov.innerHTML = backBtn + `
       <div class="pad" style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-size:24px;font-weight:700;font-family:var(--disp);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.name)}</div>
-      <div class="secc" style="font-size:14px">${esc(d.symbol || '')} · Solana · ${age(d.migratedAt)}</div></div>${d.shield ? `<span class="chip ${d.shield === '8/8' ? '' : 'bad'}">⛨ ${d.shield}</span>` : ''}${paperPill()}</div>
+      <div class="secc" style="font-size:14px">${esc(d.symbol || '')} · Solana · ${age(d.migratedAt)}</div></div>${d.shield ? `<button class="chip ${d.shield === '8/8' ? '' : 'bad'}" id="c-shield" style="min-height:44px;height:auto">⛨ ${d.shield}</button>` : ''}${paperPill()}</div>
       <div class="price num">${price(d.price)}</div>
       ${d.sinceEntryPct != null ? `<div class="pad ${d.sinceEntryPct >= 0 ? 'up' : 'down'}" style="font-weight:600">${d.sinceEntryPct >= 0 ? '▲' : '▼'} ${Math.abs(d.sinceEntryPct).toFixed(2)}% since entry</div>` : ''}
       <div class="chart-wrap" style="height:260px;margin:12px var(--g) 0"><canvas id="c-candles"></canvas></div>
@@ -360,6 +361,7 @@
         <div class="kv"><span>Timeout</span><span class="num">${Math.floor(p.timeoutLeftS / 3600)}h ${Math.floor(p.timeoutLeftS % 3600 / 60)}m left</span></div></div>` : ''}
       <a class="cta ${p ? 'sell' : ''}" href="${esc(d.coin_url)}" target="_blank" rel="noopener">${p ? 'Sell on FOMO' : 'Buy on FOMO'}</a>`;
     Charts.candles($('#c-candles'), d.candles, p ? p.exitLine : null);
+    const sh = $('#c-shield'); if (sh) sh.onclick = () => openOverlay({ kind: 'audit', mint });
   }
 
   function renderAudit(ov, mint) {
