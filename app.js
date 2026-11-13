@@ -10,7 +10,7 @@
 
   // ---- DATA_PATH from the #d= fragment, then localStorage ----
   const m = location.hash.match(/[#&]d=([A-Za-z0-9_-]{32,})/);
-  if (m) { localStorage.setItem('dp', m[1]); history.replaceState(null, '', location.pathname + location.search); }
+  if (m) { localStorage.setItem('dp', m[1]); }
   const DP = localStorage.getItem('dp');
   const BASE = (localStorage.getItem('base') || R2) + '/d/' + DP + '/';
 
